@@ -42,6 +42,7 @@ from qgis.PyQt.QtWidgets import (
 )
 
 from . import studio_i18n, studio_icons, studio_pro, studio_toolbars
+from .studio_compat import ThemeWatcher, register_theme, unregister_theme
 from .studio_events import EventHub, menu_of
 from .studio_i18n import tr
 from .studio_layers import LayersPanel
@@ -2835,6 +2836,7 @@ class QgisStudioThemesPlugin:
         self._ready = False
         self._settings_action = None
         self._settings_dialog = None
+        self._theme_watcher = None
         self._compact = False
         self._extra_tokens = {}
         # Themes (re)built by this plugin load, i.e. new or updated.
@@ -2905,7 +2907,8 @@ class QgisStudioThemesPlugin:
                 settings.setValue("UI/UITheme", configured)
         if configured in self._studio_themes():
             self._prepare(configured)
-        QgsApplication.instance().themeChanged.connect(self._sync)
+        self._theme_watcher = ThemeWatcher(self._sync, self.iface.mainWindow())
+        self._theme_watcher.start()
         self.iface.messageBar().widgetAdded.connect(self._style_message_bar)
         self.iface.layoutDesignerOpened.connect(self._label_designer)
         self.iface.initializationCompleted.connect(self._initialized)
@@ -2978,9 +2981,7 @@ class QgisStudioThemesPlugin:
         # as soon as that theme is registered.
         self._select_style(configured)
         for name in registered:
-            QgsApplication.applicationThemeRegistry().addTheme(
-                f"Studio {name}", self.theme_target(name).as_posix()
-            )
+            register_theme(f"Studio {name}", self.theme_target(name).as_posix())
         if renamed_running is not None and renamed_running == configured:
             # Upgraded while QGIS shows a theme under its former name: move
             # QGIS to the new name now, not only at the next start.
@@ -3070,7 +3071,7 @@ class QgisStudioThemesPlugin:
             thread.join(timeout=2)
         self._threads = []
         if self._connected:
-            QgsApplication.instance().themeChanged.disconnect(self._sync)
+            self._theme_watcher.stop()
             self.iface.messageBar().widgetAdded.disconnect(self._style_message_bar)
             self.iface.layoutDesignerOpened.disconnect(self._label_designer)
             self.iface.initializationCompleted.disconnect(self._initialized)
@@ -3106,7 +3107,7 @@ class QgisStudioThemesPlugin:
             # restart. (An upgraded or reloaded plugin applies it again.)
             QApplication.instance().setStyleSheet("")
         for name in self.THEMES:
-            QgsApplication.applicationThemeRegistry().removeTheme(f"Studio {name}")
+            unregister_theme(f"Studio {name}")
         studio_i18n.uninstall()
 
     # ---- Theme state ------------------------------------------------------

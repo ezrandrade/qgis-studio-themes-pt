@@ -73,12 +73,13 @@ import functools
 import re
 
 from qgis.PyQt.QtCore import QEvent, QMargins, QObject, QPointF, QRect, Qt, QTimer
-from qgis.PyQt.QtGui import QColor, QFont, QFontDatabase, QFontMetrics, QFontMetricsF, QPainter, QPen, QPixmap
+from qgis.PyQt.QtGui import QColor, QFont, QFontMetrics, QFontMetricsF, QPainter, QPen, QPixmap
 from qgis.PyQt.QtWidgets import (
     QAbstractSpinBox, QApplication, QComboBox, QLabel, QLineEdit, QMainWindow, QStyle, QStyleOptionToolBar,
     QToolBar, QToolButton, QWidget,
 )
 
+from .studio_compat import font_families
 from .studio_i18n import translated
 
 PROPERTY = "studioLabel"
@@ -383,7 +384,7 @@ def _face():
     """Segoe UI where installed (Windows): hand-hinted for small sizes,
     so small text keeps solid stems where a font with automatic hinting
     (Inter, the UI font) stays soft. Elsewhere the UI font."""
-    return "Segoe UI" if "Segoe UI" in QFontDatabase.families() else None
+    return "Segoe UI" if "Segoe UI" in font_families() else None
 
 
 def _font(size, weight, spacing=0.0):

@@ -1,6 +1,6 @@
 # QGIS Studio Themes
 
-Six modern UI themes for QGIS 4: a clean stylesheet, a complete icon set,
+Six modern UI themes for QGIS 3.44+ and QGIS 4: a clean stylesheet, a complete icon set,
 the Inter typeface and an optional ribbon.
 
 <p align="center">
@@ -14,7 +14,7 @@ the Inter typeface and an optional ribbon.
 2. **Settings → Options → General → UI Theme**: pick a Studio theme.
 3. Restart QGIS.
 
-Requires QGIS 4.0 or later.
+Requires QGIS 3.44 or later (QGIS 4 included).
 
 ## Themes
 

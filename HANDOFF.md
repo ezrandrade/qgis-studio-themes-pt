@@ -1,11 +1,11 @@
 # Handoff — QGIS Studio Themes
 
 ## 1. Project
-QGIS 4 (Qt 6) plugin that themes the whole QGIS UI. Repo: github.com/GallPeters/qgis-studio-themes, branch `main`.
+QGIS 3.44+ (Qt 5) and QGIS 4 (Qt 6) plugin that themes the whole QGIS UI. Repo: github.com/GallPeters/qgis-studio-themes, branch `main`.
 - `themes/` — `style.qss` with `@tokens`, per-theme `variables.qss`, `base.qss`. Six themes: Pro Light, Orange Light, QGIS Light, Premium Dark, Web Dark, Orange Dark.
 - `studio_icons.py` — the icon set (`ICON_MAP`: QGIS icon name → Tabler glyph + optional badge), Monochrome / Colourful Pro / QGIS classic styles (Colourful is the base drawing of Colourful Pro), detailed hand-drawn Colourful drawings (`DETAILED`, 32-unit grid).
 - `qgis_studio_themes.py` — plugin core: theme building, `IconSwapper` (replaces icons on live widgets), `SharpIconEngine`, sizing.
-- `studio_ribbon.py` (optional ribbon), `studio_toolbars.py` (toolbar names), `studio_layers.py` (Layers panel search + List by Data Source), `studio_tokens.py`, `studio_events.py`, `studio_i18n.py` (translations: `tr()`, loads `i18n/qgis_studio_themes_<locale>.qm`; see `i18n/README.md`).
+- `studio_ribbon.py` (optional ribbon), `studio_toolbars.py` (toolbar names), `studio_layers.py` (Layers panel search + List by Data Source), `studio_tokens.py`, `studio_events.py`, `studio_compat.py` (QGIS 3/Qt 5 vs QGIS 4/Qt 6: theme registration, ThemeWatcher in place of QGIS 4's themeChanged, Qt 5 API differences; keep every version difference there), `studio_i18n.py` (translations: `tr()`, loads `i18n/qgis_studio_themes_<locale>.qm`; see `i18n/README.md`).
 
 Goal: a modern, mature GUI that **looks** like ArcGIS Pro but **behaves** like QGIS. Never mention ArcGIS/Esri in `metadata.txt`'s changelog.
 
@@ -47,7 +47,9 @@ Ask the user before building any of them.
 
 - **Linux probe (15.11.2026 session):** QGIS 4.3 is installed (`/usr/bin/qgis`). Isolated profile under the session scratchpad `probe/root/profiles/tests` (plugin copied into its `python/plugins`); run `PROBE_OUT=<dir> QT_QPA_PLATFORM=offscreen qgis --profiles-path <probe>/root --profile tests --nologo --noversioncheck --code probe.py` (no window on the user's display). An installed copy (no `.git`) rebuilds its theme only when `metadata.txt` changes: `touch` it after copying a changed `style.qss`.
 
+- **Qt 5 / Qt 6 bench (25.11.2026 session, no QGIS needed):** PyQt5 5.15 and PyQt6 in a venv, `qgis.PyQt` generated from QGIS release-3_44's `python/PyQt/PyQt/*.py.in`, stub `qgis.core`/`qgis.gui` and a fake iface (main window, QGIS toolbars and menus, message bar). Runs the plugin's whole lifecycle offscreen: theme on/switch/off, every settings combination, every ribbon tab painted, the 3 icon styles and 6 themes, at scale 1 and 2, as QGIS 3.44 Qt5, QGIS 3.44 Qt6 and QGIS 4 (registry + themeChanged). It finds Qt API breaks, not visual ones; a real QGIS 3.44 still has to be checked.
+
 ## 6. Release workflow
 1. Edit → changelog in `metadata.txt` (short, plain bullets) → commit.
-2. Rebuild zip from `git archive HEAD` of: LICENSE, `__init__.py`, fonts, icon.png, icon.svg, icons, metadata.txt, the 8 `.py` modules, i18n (`.qm` and `.ts`), themes; prefix `qgis_studio_themes/`, no directory entries → `releases/qgis_studio_themes-<ver>.zip` → commit "Rebuild v<ver> release zip".
+2. Rebuild zip from `git archive HEAD` of: LICENSE, `__init__.py`, fonts, icon.png, icon.svg, icons, metadata.txt, the 9 `.py` modules, i18n (`.qm` and `.ts`), themes; prefix `qgis_studio_themes/`, no directory entries → `releases/qgis_studio_themes-<ver>.zip` → commit "Rebuild v<ver> release zip".
 3. Push (`git push` sometimes fails transiently; retry). Commit/push only when the user asks.
