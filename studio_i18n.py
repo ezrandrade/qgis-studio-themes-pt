@@ -35,29 +35,40 @@ def translated(text, disambiguation=None):
 
 
 def locale():
-    """QGIS's locale, such as "pt_BR"."""
+    """The language QGIS shows its own interface in, such as "pt_BR": the
+    translation it loaded (Settings > Options > General, or the system's
+    language). QgsApplication.locale() is not used: without the override
+    it gives only the language ("pt")."""
     name = ""
+    app = QgsApplication.instance()
     try:
-        name = QgsApplication.locale() or ""
+        name = app.translation() if app is not None else ""
     except AttributeError:
         pass
-    if not name:
-        settings = QgsSettings()
-        if settings.value("locale/overrideFlag", False, type=bool):
-            name = settings.value("locale/userLocale", "", type=str)
+    if not name or name == "C":
+        # QGIS stores the language it starts with here, also without the
+        # override (for plugins).
+        name = QgsSettings().value("locale/userLocale", "", type=str)
     return name or QLocale().name()
 
 
+def candidates(name):
+    """Translation files for locale `name`, best first: its own (pt_BR),
+    its language's (pt), then another country's of that language (pt_PT
+    for a plain "pt")."""
+    name = name.replace("-", "_")
+    language = name.split("_")[0]
+    files = [FOLDER / f"{PREFIX}{name}.qm", FOLDER / f"{PREFIX}{language}.qm"]
+    files += sorted(FOLDER.glob(f"{PREFIX}{language}_*.qm"))
+    return [path for path in dict.fromkeys(files) if path.is_file()]
+
+
 def install():
-    """Load the translation for QGIS's locale (pt_BR, else pt), if any."""
+    """Load the translation for QGIS's language, if there is one."""
     global _translator  # pylint: disable=global-statement
     if _translator is not None:
         return
-    name = locale().replace("-", "_")
-    for candidate in dict.fromkeys((name, name.split("_")[0])):
-        path = FOLDER / f"{PREFIX}{candidate}.qm"
-        if not path.is_file():
-            continue
+    for path in candidates(locale()):
         translator = QTranslator()
         if translator.load(str(path)):
             QCoreApplication.installTranslator(translator)
