@@ -79,6 +79,8 @@ from qgis.PyQt.QtWidgets import (
     QToolBar, QToolButton, QWidget,
 )
 
+from .studio_i18n import translated
+
 PROPERTY = "studioLabel"
 # The room a strip mode takes (px): above the buttons ("top"), below them
 # ("bottom") or the taller handle ("handle"); the stylesheet has a rule per
@@ -127,7 +129,8 @@ HANDLE_WIDTH = 6
 STYLED_ITEMS = (QToolButton, QComboBox, QAbstractSpinBox, QLineEdit, QLabel)
 
 # Shorter English names for QGIS's own toolbars, by their title without
-# "Toolbar". Translated titles are used as they are.
+# "Toolbar". Translated titles are used as they are, unless the plugin's
+# translation names the toolbar (OWN_TITLES).
 SHORT_TITLES = {
     "Data Source Manager": "Data Sources",
     "Manage Layers": "Layers",
@@ -167,9 +170,48 @@ SHORT_NAMES = {
     "mAtlasToolbar": "ATLS",
     "mReportToolbar": "RPRT",
 }
+# QGIS's own toolbars by object name: their names in English (as title()
+# makes them from QGIS's English titles), for the plugin's translation
+# ("toolbar name"). Translated QGIS titles can be long ("Barra de
+# ferramentas do Projeto") or mistranslated; a translated name replaces
+# them. Without a translation the title is used, as in English.
+OWN_TITLES = {
+    "mFileToolBar": "Project",
+    "mLayerToolBar": "Layers",
+    "mDataSourceManagerToolBar": "Data Sources",
+    "mDigitizeToolBar": "Digitizing",
+    "mAdvancedDigitizeToolBar": "Advanced Digitizing",
+    "mShapeDigitizeToolBar": "Shapes",
+    "mMeshToolBar": "Mesh",
+    "mSnappingToolBar": "Snapping",
+    "mMapNavToolBar": "Map Navigation",
+    "mAttributesToolBar": "Attributes",
+    "mSelectionToolBar": "Selection",
+    "mLabelToolBar": "Labels",
+    "mAnnotationsToolBar": "Annotations",
+    "mPluginToolBar": "Plugins",
+    "mHelpToolBar": "Help",
+    "mRasterToolBar": "Raster",
+    "mVectorToolBar": "Vector",
+    "mDatabaseToolBar": "Database",
+    "mWebToolBar": "Web",
+    "mGpsToolBar": "GPS",
+    "mLayoutToolbar": "Layout",
+    "mToolsToolbar": "Toolbox",
+    "mNavigationToolbar": "Navigation",
+    "mActionsToolbar": "Actions",
+    "mAtlasToolbar": "Atlas",
+    "mReportToolbar": "Report",
+}
 SHORT_LENGTH = 4
-# Words left out when a short name is made from a title.
-GENERIC_WORDS = {"toolbar", "tools", "tool", "plugin"}
+# Words left out when a short name is made from a title (English and
+# Portuguese).
+GENERIC_WORDS = {"toolbar", "tools", "tool", "plugin", "ferramentas", "ferramenta", "complemento"}
+# Linking words a short name is not made from ("Gerenciador de Dados").
+LINK_WORDS = {"de", "do", "da", "dos", "das", "e"}
+# "Toolbar" in translated titles: a word of its own in English, a phrase in
+# Portuguese ("Barra de ferramentas do Projeto"), left out of names.
+TOOLBAR_WORDS = re.compile(r"\b(?:toolbar|barras? de ferramentas?(?:\s+d[aeo]s?)?)\b", re.IGNORECASE)
 
 # Vertical toolbars: three-letter names across the top of the handle.
 # Others, such as plugin toolbars, get the first three letters of their
@@ -205,11 +247,32 @@ ABBREVIATIONS = {
 NAME_LENGTH = 3
 
 
+def title_words(text):
+    """A toolbar title's words, without "&" and "Toolbar" (in English or
+    Portuguese)."""
+    return TOOLBAR_WORDS.sub(" ", text.replace("&", "")).split()
+
+
+def own_name(table, toolbar, disambiguation):
+    """The translated name `table` gives `toolbar`, or None (no entry or no
+    translation loaded): see OWN_TITLES."""
+    name = table.get(toolbar.objectName())
+    return translated(name, disambiguation) if name else None
+
+
+def short_name(toolbar):
+    """The toolbar's own short name (SHORT_NAMES), translated if it is."""
+    name = SHORT_NAMES.get(toolbar.objectName())
+    return (translated(name, "short toolbar name") or name) if name else None
+
+
 def title(toolbar):
     """The name shown above a toolbar: its title without "Toolbar", in
     capitals."""
-    words = [w for w in toolbar.windowTitle().replace("&", "").split() if w.lower() != "toolbar"]
-    text = " ".join(words)
+    own = own_name(OWN_TITLES, toolbar, "toolbar name")
+    if own:
+        return own.upper()
+    text = " ".join(title_words(toolbar.windowTitle()))
     return SHORT_TITLES.get(text, text).upper()
 
 
@@ -289,7 +352,9 @@ def short_candidates(text):
     """Short names for a toolbar titled `text`, best first: its first
     word's first letters, mixed with the next word's, or the initials of a
     longer title. Generic words (Toolbar, Tools...) are left out."""
-    words = [w for w in re.split(r"[\s_/-]+", text.replace("&", "")) if w and w.lower() != "toolbar"]
+    words = [w for w in re.split(r"[\s_/-]+", TOOLBAR_WORDS.sub(" ", text.replace("&", "")))
+             if w and w.lower() != "toolbar"]
+    words = [w for w in words if w.lower() not in LINK_WORDS] or words
     words = [w.upper() for w in ([w for w in words if w.lower() not in GENERIC_WORDS] or words)]
     if not words:
         return []
@@ -308,8 +373,8 @@ def short_candidates(text):
 def abbreviation(toolbar):
     known = ABBREVIATIONS.get(toolbar.objectName())
     if known:
-        return known
-    words = [w for w in toolbar.windowTitle().replace("&", "").split() if w.lower() != "toolbar"]
+        return translated(known, "toolbar abbreviation") or known
+    words = title_words(toolbar.windowTitle())
     return words[0][:NAME_LENGTH].upper() if words else ""
 
 
@@ -929,13 +994,13 @@ class ToolbarLabels(QObject):
         name = self._shorts.get(toolbar)
         if name is not None:
             return name
-        name = SHORT_NAMES.get(toolbar.objectName())
+        name = short_name(toolbar)
         if name is None:
             window = toolbar.parentWidget()
             taken = set()
             for other in self._labels:
                 if other is not toolbar and not sip.isdeleted(other) and other.parentWidget() is window:
-                    taken.add(self._shorts.get(other) or SHORT_NAMES.get(other.objectName()))
+                    taken.add(self._shorts.get(other) or short_name(other))
             candidates = short_candidates(toolbar.windowTitle())
             name = next((c for c in candidates if c not in taken), candidates[0] if candidates else "")
         self._shorts[toolbar] = name

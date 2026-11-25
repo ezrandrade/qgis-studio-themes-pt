@@ -22,13 +22,11 @@ from pathlib import Path
 from qgis.core import QgsApplication, QgsDataSourceUri, QgsLayerTreeNode, QgsProject, QgsProviderRegistry
 from qgis.gui import QgsFilterLineEdit
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QCoreApplication, Qt, QTimer
+from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtGui import QAction, QFont, QIcon
 from qgis.PyQt.QtWidgets import QDockWidget, QToolBar, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 
-
-def tr(text):
-    return QCoreApplication.translate("QgisStudioThemes", text)
+from .studio_i18n import tr
 
 
 # The List by Data Source button's icon (studio_icons.ICON_MAP).
@@ -78,7 +76,8 @@ def source_of(layer):
     path = parts.get("path") or ""
     if path:
         suffix = Path(path).suffix.lower()
-        kind, icon = FILE_KINDS.get(suffix, (suffix[1:].upper() if suffix else tr("File"), "mIconFile.svg"))
+        kind, icon = FILE_KINDS.get(suffix, (suffix[1:].upper() if suffix else "File", "mIconFile.svg"))
+        kind = tr(kind)
         return "file:" + os.path.normcase(os.path.abspath(path)), f"{kind} · {Path(path).name}", icon, path
     if provider == "memory":
         return "memory", tr("Temporary Scratch Layers"), "mIconMemory.svg", tr("Layers kept in memory")

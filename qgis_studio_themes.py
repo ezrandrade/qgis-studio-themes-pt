@@ -41,8 +41,9 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 
-from . import studio_icons, studio_pro, studio_toolbars
+from . import studio_i18n, studio_icons, studio_pro, studio_toolbars
 from .studio_events import EventHub, menu_of
+from .studio_i18n import tr
 from .studio_layers import LayersPanel
 from .studio_ribbon import CAPTION_NAMES, CAPTION_POSITION, DEFAULT_DENSITY, DENSITIES, RIBBON_SIZES, StudioRibbon
 from .studio_toolbars import NAME_STYLES, POSITIONS, TITLE_SIZE, TITLE_SIZES, WEIGHTS, ToolbarLabels, name_rules
@@ -2619,47 +2620,48 @@ class SettingsDialog(QDialog):
     def __init__(self, plugin, parent=None):
         super().__init__(parent)
         self._plugin = plugin
-        self.setWindowTitle("QGIS Studio Themes Settings")
+        self.setWindowTitle(tr("QGIS Studio Themes Settings"))
         self.setMinimumWidth(460)
         _position, _names, size, weight = plugin.label_style()
         _position, _names, _size, _weight, ribbon_size, density = plugin.ribbon_style()
         self._interface = self._combo(self.INTERFACES, plugin.interface())
         self._icon_style = self._combo(self.ICON_STYLES, plugin.icon_style())
-        self._icon_style.setToolTip(
+        self._icon_style.setToolTip(tr(
             "Monochrome: the theme's single-colour icons. Colourful Pro: the same icons in their "
             "objects' own soft colours, outlines in each object's colour and a flat shadow. "
             "QGIS classic: QGIS's own icons."
-        )
+        ))
         self._ribbon_size = self._combo(self.RIBBON_SIZES, ribbon_size)
-        self._ribbon_size.setToolTip(
+        self._ribbon_size.setToolTip(tr(
             "The ribbon's icons and rows: as QGIS's toolbar icon size (Options > General) would make "
             "them, or a size of their own."
-        )
+        ))
         self._density = self._combo(self.DENSITIES, density)
-        self._density.setToolTip(
+        self._density.setToolTip(tr(
             "Compact keeps the icons' sizes and leaves less room around them, so the ribbon takes "
             "less of the window's height."
-        )
+        ))
         self._position = self._combo(self.POSITIONS, None)
         self._names = self._combo(self.NAMES, None)
         self._size = QComboBox()
         for value in TITLE_SIZES:
-            self._size.addItem(f"{value} px" + (" (default)" if value == TITLE_SIZE else ""), value)
+            text = tr("{size} px (default)") if value == TITLE_SIZE else tr("{size} px")
+            self._size.addItem(text.format(size=value), value)
         self._size.setCurrentIndex(max(0, self._size.findData(size)))
         self._weight = self._combo(self.WEIGHTS, weight)
         self._form = form = QFormLayout()
-        form.addRow("Interface", self._interface)
-        form.addRow("Icons", self._icon_style)
-        form.addRow("Ribbon size", self._ribbon_size)
-        form.addRow("Ribbon density", self._density)
-        form.addRow("Toolbar name position", self._position)
-        form.addRow("Toolbar name", self._names)
-        form.addRow("Font size", self._size)
-        form.addRow("Font weight", self._weight)
+        form.addRow(tr("Interface"), self._interface)
+        form.addRow(tr("Icons"), self._icon_style)
+        form.addRow(tr("Ribbon size"), self._ribbon_size)
+        form.addRow(tr("Ribbon density"), self._density)
+        form.addRow(tr("Toolbar name position"), self._position)
+        form.addRow(tr("Toolbar name"), self._names)
+        form.addRow(tr("Font size"), self._size)
+        form.addRow(tr("Font weight"), self._weight)
         self._note = note = QLabel()
         note.setTextFormat(Qt.TextFormat.RichText)
         note.setWordWrap(True)
-        self._inactive = QLabel("Toolbar names and the ribbon show while a Studio theme is in use.")
+        self._inactive = QLabel(tr("Toolbar names and the ribbon show while a Studio theme is in use."))
         self._inactive.setWordWrap(True)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.close)
@@ -2680,7 +2682,7 @@ class SettingsDialog(QDialog):
     def _combo(choices, current):
         combo = QComboBox()
         for value, text in choices:
-            combo.addItem(text, value)
+            combo.addItem(tr(text), value)
         if current is not None:
             combo.setCurrentIndex(max(0, combo.findData(current)))
         return combo
@@ -2732,23 +2734,26 @@ class SettingsDialog(QDialog):
         it alone."""
         position = self._position.currentData()
         ribbon = self._ribbon()
-        noun = "Group" if ribbon else "Toolbar"
-        for widget, text in ((self._position, f"{noun} name position"), (self._names, f"{noun} name")):
+        if ribbon:
+            texts = ((self._position, tr("Group name position")), (self._names, tr("Group name")))
+        else:
+            texts = ((self._position, tr("Toolbar name position")), (self._names, tr("Toolbar name")))
+        for widget, text in texts:
             label = self._form.labelForField(widget)
             if label is not None:
                 label.setText(text)
         self._position.setItemText(
-            self._position.findData("bottom"), self.RIBBON_BOTTOM if ribbon else dict(self.POSITIONS)["bottom"])
+            self._position.findData("bottom"), tr(self.RIBBON_BOTTOM if ribbon else dict(self.POSITIONS)["bottom"]))
         self._ribbon_size.setEnabled(ribbon)
         self._density.setEnabled(ribbon)
         self._names.setEnabled(position != "off")
         for combo in (self._size, self._weight):
             combo.setEnabled(position != "off")
         if ribbon:
-            text = "All toolbar buttons in tabs. Double-click a tab to hide or show the ribbon."
+            text = tr("All toolbar buttons in tabs. Double-click a tab to hide or show the ribbon.")
         else:
-            text = "Names show on toolbars docked in rows. Hover over a toolbar to see its full name."
-        tip = self.SMALL_SCREEN_TIP.replace(">", "&gt;")
+            text = tr("Names show on toolbars docked in rows. Hover over a toolbar to see its full name.")
+        tip = tr(self.SMALL_SCREEN_TIP).replace(">", "&gt;")
         self._note.setText(f"{text}<br><br><b>{tip}</b>")
         vertical = position == "left_vertical"
         self._names.model().item(self._names.findData("full")).setEnabled(not vertical)
@@ -2781,6 +2786,8 @@ class QgisStudioThemesPlugin:
     }
 
     def __init__(self, iface):
+        # The plugin's own texts in QGIS's language, before any is shown.
+        studio_i18n.install()
         self.iface = iface
         self._connected = False
         self._active = None
@@ -2906,7 +2913,7 @@ class QgisStudioThemesPlugin:
         self._ready = self.iface.mainWindow().isVisible()
         self._connected = True
         self._settings_action = QAction(
-            QgsApplication.getThemeIcon("mActionOptions.svg"), "Settings…", self.iface.mainWindow()
+            QgsApplication.getThemeIcon("mActionOptions.svg"), tr("Settings…"), self.iface.mainWindow()
         )
         self._settings_action.triggered.connect(self._show_settings)
         self.iface.addPluginToMenu(MENU_NAME, self._settings_action)
@@ -2989,7 +2996,7 @@ class QgisStudioThemesPlugin:
             # QGIS cached some icons from the previous version's files
             # (e.g. Browser provider icons) and offers no way to drop them.
             self.iface.messageBar().pushMessage(
-                "Studio Themes", "Updated. Restart QGIS once so every icon shows the new version.",
+                "Studio Themes", tr("Updated. Restart QGIS once so every icon shows the new version."),
                 Qgis.MessageLevel.Info, 30,
             )
         QTimer.singleShot(2000, lambda: self._start(self._build_pending, pending))
@@ -3100,6 +3107,7 @@ class QgisStudioThemesPlugin:
             QApplication.instance().setStyleSheet("")
         for name in self.THEMES:
             QgsApplication.applicationThemeRegistry().removeTheme(f"Studio {name}")
+        studio_i18n.uninstall()
 
     # ---- Theme state ------------------------------------------------------
 
@@ -3321,9 +3329,10 @@ class QgisStudioThemesPlugin:
         previous = self.icon_style()
         if style not in ICON_STYLES or style == previous:
             return
-        self._change_icons(ICON_STYLE_SETTING, style, previous, "icon style")
+        self._change_icons(
+            ICON_STYLE_SETTING, style, previous, "Could not change the icon style; see the QGIS Studio Themes log.")
 
-    def _change_icons(self, setting, value, previous, what):
+    def _change_icons(self, setting, value, previous, failure):
         """Store an icon setting and show it at once (set_icon_style)."""
         QgsSettings().setValue(setting, value)
         if self._stamp_base is None:
@@ -3338,7 +3347,7 @@ class QgisStudioThemesPlugin:
             QgsSettings().setValue(setting, previous)
             self._shared_stamp = self._icons_stamp(self.icon_style())
             self.iface.messageBar().pushMessage(
-                "Studio Themes", f"Could not change the {what}; see the QGIS Studio Themes log.",
+                "Studio Themes", tr(failure),
                 Qgis.MessageLevel.Warning, 10,
             )
             return

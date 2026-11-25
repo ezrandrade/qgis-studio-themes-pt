@@ -103,6 +103,7 @@ pixel-sharp at every screen scaling.
   screen (e.g. a 14" laptop at 100% scaling), set it to 24 in Settings >
   Options > General.**
 - **Fast**: icons are drawn once and shared by every theme.
+- **Translations**: Brazilian Portuguese (`i18n/`), following QGIS's language setting.
 
 ## Contributing
 
